@@ -1,0 +1,3 @@
+com.contoso.uem.LinkDomainBRequiredActionFactory
+com.contoso.uem.UnlinkDomainBRequiredActionFactory
+com.contoso.uem.UnlinkDomainCRequiredActionFactory

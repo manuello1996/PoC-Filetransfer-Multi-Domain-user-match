@@ -1,0 +1,61 @@
+{
+  "realm": "uem",
+  "enabled": true,
+  "displayName": "UEM Secure Transfer PoC",
+  "loginTheme": "uem-poc",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "requiredActions": [
+    {"alias":"uem-link-directory","name":"Link a directory account","providerId":"uem-link-directory","enabled":true,"defaultAction":true,"priority":100},
+    {"alias":"uem-unlink-domain-b","name":"Unlink Domain B account","providerId":"uem-unlink-domain-b","enabled":true,"defaultAction":false,"priority":110},
+    {"alias":"uem-unlink-domain-c","name":"Unlink Domain C account","providerId":"uem-unlink-domain-c","enabled":true,"defaultAction":false,"priority":120}
+  ],
+  "authenticationFlows": [
+    {"id":"11111111-1111-4111-8111-111111111111","alias":"poc-domain-a","description":"Simulated Domain A SPNEGO plus first-time directory linking","providerId":"basic-flow","topLevel":true,"builtIn":false,"authenticationExecutions":[{"authenticator":"uem-poc-domain-a","requirement":"REQUIRED","priority":10,"authenticatorFlow":false}]},
+    {"id":"22222222-2222-4222-8222-222222222222","alias":"poc-domain-b","description":"Simulated Domain B SPNEGO","providerId":"basic-flow","topLevel":true,"builtIn":false,"authenticationExecutions":[{"authenticator":"uem-poc-domain-b","requirement":"REQUIRED","priority":10,"authenticatorFlow":false}]},
+    {"id":"44444444-4444-4444-8444-444444444444","alias":"poc-domain-c","description":"Simulated Domain C SPNEGO","providerId":"basic-flow","topLevel":true,"builtIn":false,"authenticationExecutions":[{"authenticator":"uem-poc-domain-c","requirement":"REQUIRED","priority":10,"authenticatorFlow":false}]},
+    {"id":"33333333-3333-4333-8333-333333333333","alias":"poc-manage-links","description":"Existing Keycloak SSO session required for self-service link management","providerId":"basic-flow","topLevel":true,"builtIn":false,"authenticationExecutions":[{"authenticator":"auth-cookie","requirement":"REQUIRED","priority":10,"authenticatorFlow":false}]}
+  ],
+  "clients": [
+    {
+      "clientId":"uem-a","name":"UEM from Domain A","enabled":true,"clientAuthenticatorType":"client-secret","secret":"uem-a-poc-secret","standardFlowEnabled":true,"directAccessGrantsEnabled":false,"publicClient":false,
+      "redirectUris":["http://localhost:8081/callback/a"],"webOrigins":["http://localhost:8081"],"authenticationFlowBindingOverrides":{"browser":"11111111-1111-4111-8111-111111111111"},
+      "protocolMappers":[
+        {"name":"domain-b-identity","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper","consentRequired":false,"config":{"user.attribute":"identity_b","claim.name":"domain_b_identity","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+        {"name":"domain-c-identity","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper","consentRequired":false,"config":{"user.attribute":"identity_c","claim.name":"domain_c_identity","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+        {"name":"link-status","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper","consentRequired":false,"config":{"user.attribute":"link_status","claim.name":"link_status","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true"}}
+      ]
+    },
+    {
+      "clientId":"uem-b","name":"UEM from Domain B","enabled":true,"clientAuthenticatorType":"client-secret","secret":"uem-b-poc-secret","standardFlowEnabled":true,"directAccessGrantsEnabled":false,"publicClient":false,
+      "redirectUris":["http://localhost:8082/callback/b"],"webOrigins":["http://localhost:8082"],"authenticationFlowBindingOverrides":{"browser":"22222222-2222-4222-8222-222222222222"},
+      "protocolMappers":[
+        {"name":"domain-b-identity","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper","consentRequired":false,"config":{"user.attribute":"identity_b","claim.name":"domain_b_identity","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+        {"name":"domain-c-identity","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper","consentRequired":false,"config":{"user.attribute":"identity_c","claim.name":"domain_c_identity","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+        {"name":"link-status","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper","consentRequired":false,"config":{"user.attribute":"link_status","claim.name":"link_status","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true"}}
+      ]
+    },
+    {
+      "clientId":"uem-c","name":"UEM from Domain C","enabled":true,"clientAuthenticatorType":"client-secret","secret":"uem-c-poc-secret","standardFlowEnabled":true,"directAccessGrantsEnabled":false,"publicClient":false,
+      "redirectUris":["http://localhost:8083/callback/c"],"webOrigins":["http://localhost:8083"],"authenticationFlowBindingOverrides":{"browser":"44444444-4444-4444-8444-444444444444"},
+      "protocolMappers":[
+        {"name":"domain-b-identity","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper","consentRequired":false,"config":{"user.attribute":"identity_b","claim.name":"domain_b_identity","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+        {"name":"domain-c-identity","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper","consentRequired":false,"config":{"user.attribute":"identity_c","claim.name":"domain_c_identity","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+        {"name":"link-status","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper","consentRequired":false,"config":{"user.attribute":"link_status","claim.name":"link_status","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true"}}
+      ]
+    },
+    {
+      "clientId":"uem-link","name":"UEM self-service directory linking","enabled":true,"clientAuthenticatorType":"client-secret","secret":"uem-link-poc-secret","standardFlowEnabled":true,"directAccessGrantsEnabled":false,"publicClient":false,
+      "redirectUris":["http://localhost:8081/callback/link","http://localhost:8081/callback/unlink-b","http://localhost:8081/callback/unlink-c"],"webOrigins":["http://localhost:8081"],"authenticationFlowBindingOverrides":{"browser":"33333333-3333-4333-8333-333333333333"},
+      "protocolMappers":[
+        {"name":"domain-b-identity","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper","consentRequired":false,"config":{"user.attribute":"identity_b","claim.name":"domain_b_identity","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+        {"name":"domain-c-identity","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper","consentRequired":false,"config":{"user.attribute":"identity_c","claim.name":"domain_c_identity","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true","userinfo.token.claim":"true"}},
+        {"name":"link-status","protocol":"openid-connect","protocolMapper":"oidc-usermodel-attribute-mapper","consentRequired":false,"config":{"user.attribute":"link_status","claim.name":"link_status","jsonType.label":"String","id.token.claim":"true","access.token.claim":"true"}}
+      ]
+    }
+  ]
+}

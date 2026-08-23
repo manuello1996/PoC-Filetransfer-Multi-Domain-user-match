@@ -1,0 +1,176 @@
+services:
+  domain-b-ldap:
+    build:
+      context: ./ldap
+      args:
+        LDAP_USERS_LDIF: 50-domain-b-users.ldif
+    environment:
+      LDAP_ORGANISATION: Consoto Domain B
+      LDAP_DOMAIN: b.consoto.com
+      LDAP_ADMIN_PASSWORD: ldap-admin-poc-only
+      LDAP_TLS: "false"
+    volumes:
+      - domain-b-ldap:/var/lib/ldap
+      - domain-b-ldap-config:/etc/ldap/slapd.d
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:389 -D 'cn=admin,dc=b,dc=consoto,dc=com' -w \"$$LDAP_ADMIN_PASSWORD\" -b 'dc=b,dc=consoto,dc=com' -s base dn >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  domain-c-ldap:
+    build:
+      context: ./ldap
+      args:
+        LDAP_USERS_LDIF: 50-domain-c-users.ldif
+    environment:
+      LDAP_ORGANISATION: Consoto Domain C
+      LDAP_DOMAIN: c.consoto.com
+      LDAP_ADMIN_PASSWORD: ldap-admin-poc-only
+      LDAP_TLS: "false"
+    volumes:
+      - domain-c-ldap:/var/lib/ldap
+      - domain-c-ldap-config:/etc/ldap/slapd.d
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:389 -D 'cn=admin,dc=c,dc=consoto,dc=com' -w \"$$LDAP_ADMIN_PASSWORD\" -b 'dc=c,dc=consoto,dc=com' -s base dn >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak-poc-only
+    volumes:
+      - keycloak-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  keycloak:
+    build:
+      context: ./keycloak
+      args:
+        KEYCLOAK_VERSION: 26.3.3
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak-poc-only
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin-poc-only}
+      KC_HOSTNAME: http://localhost:8080
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./keycloak/realm:/opt/keycloak/data/import:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      domain-b-ldap:
+        condition: service_healthy
+      domain-c-ldap:
+        condition: service_healthy
+
+  keycloak-config:
+    image: curlimages/curl:8.14.1
+    environment:
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin-poc-only}
+    volumes:
+      - ./keycloak/configure:/config:ro
+    entrypoint: ["/bin/sh", "/config/configure-user-profile.sh"]
+    depends_on:
+      - keycloak
+
+  uem:
+    build: ./uem
+    environment:
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8080
+      KEYCLOAK_REALM: uem
+      UEM_PUBLIC_URL: http://localhost:8081
+      UEM_ALLOWED_ZONES: a,link
+      UEM_SESSION_COOKIE_NAME: uem_domain_a_session
+      UEM_SESSION_SECRET: ${UEM_SESSION_SECRET:-local-poc-change-me}
+      UEM_A_CLIENT_SECRET: uem-a-poc-secret
+      UEM_B_CLIENT_SECRET: uem-b-poc-secret
+      UEM_C_CLIENT_SECRET: uem-c-poc-secret
+      UEM_LINK_CLIENT_SECRET: uem-link-poc-secret
+      UEM_DATA_DIR: /data
+    ports:
+      - "8081:8081"
+    volumes:
+      - uem-data:/data
+    depends_on:
+      - keycloak
+
+  uem-vdi-b:
+    build: ./uem
+    environment:
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8080
+      KEYCLOAK_REALM: uem
+      UEM_PUBLIC_URL: http://localhost:8082
+      UEM_ALLOWED_ZONES: b
+      UEM_SESSION_COOKIE_NAME: uem_domain_b_session
+      UEM_SESSION_SECRET: ${UEM_SESSION_SECRET:-local-poc-change-me}
+      UEM_A_CLIENT_SECRET: uem-a-poc-secret
+      UEM_B_CLIENT_SECRET: uem-b-poc-secret
+      UEM_C_CLIENT_SECRET: uem-c-poc-secret
+      UEM_LINK_CLIENT_SECRET: uem-link-poc-secret
+      UEM_DATA_DIR: /data
+    ports:
+      - "8082:8081"
+    volumes:
+      - uem-data:/data
+    depends_on:
+      - keycloak
+
+  uem-vdi-c:
+    build: ./uem
+    environment:
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8080
+      KEYCLOAK_REALM: uem
+      UEM_PUBLIC_URL: http://localhost:8083
+      UEM_ALLOWED_ZONES: c
+      UEM_SESSION_COOKIE_NAME: uem_domain_c_session
+      UEM_SESSION_SECRET: ${UEM_SESSION_SECRET:-local-poc-change-me}
+      UEM_A_CLIENT_SECRET: uem-a-poc-secret
+      UEM_B_CLIENT_SECRET: uem-b-poc-secret
+      UEM_C_CLIENT_SECRET: uem-c-poc-secret
+      UEM_LINK_CLIENT_SECRET: uem-link-poc-secret
+      UEM_DATA_DIR: /data
+    ports:
+      - "8083:8081"
+    volumes:
+      - uem-data:/data
+    depends_on:
+      - keycloak
+
+  uem-cleanup:
+    build: ./uem
+    command: ["python", "cleanup.py"]
+    environment:
+      UEM_DATA_DIR: /data
+      UEM_CLEANUP_TIMEZONE: Europe/Zurich
+    volumes:
+      - uem-data:/data
+    depends_on:
+      - uem
+      - uem-vdi
+      - uem-vdi-c
+
+volumes:
+  domain-b-ldap:
+  domain-b-ldap-config:
+  domain-c-ldap:
+  domain-c-ldap-config:
+  keycloak-db:
+  uem-data:

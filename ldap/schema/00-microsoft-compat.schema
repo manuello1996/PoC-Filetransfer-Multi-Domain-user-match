@@ -1,0 +1,16 @@
+# Minimal PoC compatibility schema for the Microsoft AD login attribute.
+# sAMAccountName uses Microsoft's published attribute OID.
+attributetype ( 1.2.840.113556.1.4.221
+  NAME 'sAMAccountName'
+  DESC 'Microsoft Security Account Manager account name'
+  EQUALITY caseIgnoreMatch
+  SUBSTR caseIgnoreSubstringsMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{256}
+  SINGLE-VALUE )
+
+objectclass ( 1.3.6.1.4.1.4203.666.11.99.2
+  NAME 'uemAdAccount'
+  DESC 'Auxiliary PoC class carrying Active Directory-compatible attributes'
+  SUP top
+  AUXILIARY
+  MAY ( sAMAccountName ) )

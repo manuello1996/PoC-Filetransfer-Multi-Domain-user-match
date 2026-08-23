@@ -1,0 +1,35 @@
+.poc-note {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  color: #172033;
+  background: #eaf2ff;
+  border-left: 4px solid #2463eb;
+  line-height: 1.55;
+}
+
+.poc-note a { color: #174ea6; }
+.poc-principal { font-family: monospace; font-weight: 700; }
+
+/* Keycloak v2 adds this class when its browser/OS-driven dark theme is active. */
+.pf-v5-theme-dark .poc-note {
+  color: #dbeafe;
+  background: #162235;
+  border-left-color: #60a5fa;
+}
+
+.pf-v5-theme-dark .poc-note a { color: #93c5fd; }
+
+/* Keep the custom content readable while the parent theme initializes. */
+@media (prefers-color-scheme: dark) {
+  .poc-note {
+    color: #dbeafe;
+    background: #162235;
+    border-left-color: #60a5fa;
+  }
+
+  .poc-note a { color: #93c5fd; }
+}
+
+@media (forced-colors: active) {
+  .poc-note { border: 1px solid CanvasText; border-left-width: 4px; }
+}
