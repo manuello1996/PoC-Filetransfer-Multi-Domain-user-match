@@ -1,15 +1,27 @@
 import argparse
 import os
 import signal
-import sqlite3
 import time
 from datetime import datetime, time as wall_time, timedelta, timezone
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import boto3
+import psycopg
+from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
+from psycopg.rows import dict_row
 
-DATA = Path(os.environ.get("UEM_DATA_DIR", "/data"))
-DB = DATA / "metadata.db"
+
+DATABASE_URL = os.environ["UEM_DATABASE_URL"]
+S3_BUCKET = os.environ["UEM_S3_BUCKET"]
+S3 = boto3.client(
+    "s3",
+    endpoint_url=os.environ["UEM_S3_ENDPOINT"],
+    aws_access_key_id=os.environ["UEM_S3_ACCESS_KEY"],
+    aws_secret_access_key=os.environ["UEM_S3_SECRET_KEY"],
+    region_name=os.environ["UEM_S3_REGION"],
+    config=Config(s3={"addressing_style": "path"}),
+)
 TIME_ZONE = ZoneInfo(os.environ.get("UEM_CLEANUP_TIMEZONE", "Europe/Zurich"))
 RUN_AT = wall_time(23, 59)
 stop_requested = False
@@ -20,47 +32,46 @@ def request_stop(_signum, _frame):
     stop_requested = True
 
 
+def db():
+    return psycopg.connect(DATABASE_URL, row_factory=dict_row)
+
+
 def cleanup_for(local_date):
     end_local = datetime.combine(local_date + timedelta(days=1), wall_time.min, TIME_ZONE)
-    end_utc = end_local.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    end_utc = end_local.astimezone(timezone.utc)
     deleted = 0
-    with sqlite3.connect(DB, timeout=30) as connection:
-        connection.row_factory = sqlite3.Row
-        connection.execute("BEGIN IMMEDIATE")
+    with db() as connection:
         rows = connection.execute(
-            "SELECT file_id, object_key FROM files WHERE created_at < ?",
+            "SELECT file_id, object_key FROM files WHERE created_at < %s ORDER BY created_at",
             (end_utc,),
         ).fetchall()
         for row in rows:
-            (DATA / row["object_key"]).unlink(missing_ok=True)
-            connection.execute("DELETE FROM files WHERE file_id=?", (row["file_id"],))
-            deleted += 1
-        connection.execute("DELETE FROM oidc_sessions WHERE created_at < datetime('now', '-1 day')")
-    for owner_dir in (DATA / "objects").glob("*"):
-        if owner_dir.is_dir():
             try:
-                owner_dir.rmdir()
-            except OSError:
-                pass
+                S3.delete_object(Bucket=S3_BUCKET, Key=row["object_key"])
+            except (BotoCoreError, ClientError) as error:
+                print(f"cleanup object={row['object_key']} error={error.__class__.__name__}", flush=True)
+                continue
+            connection.execute("DELETE FROM files WHERE file_id=%s", (row["file_id"],))
+            deleted += 1
+        connection.execute("DELETE FROM oidc_sessions WHERE created_at < NOW() - INTERVAL '1 day'")
     print(f"cleanup date={local_date.isoformat()} timezone={TIME_ZONE.key} deleted={deleted}", flush=True)
     return deleted
 
 
-def wait_for_database():
+def wait_for_storage():
     while not stop_requested:
-        if DB.exists():
-            try:
-                with sqlite3.connect(DB, timeout=5) as connection:
-                    connection.execute("SELECT 1 FROM files LIMIT 1")
-                return True
-            except sqlite3.Error:
-                pass
-        time.sleep(2)
+        try:
+            S3.head_bucket(Bucket=S3_BUCKET)
+            with db() as connection:
+                connection.execute("SELECT 1 FROM files LIMIT 1")
+            return True
+        except (psycopg.Error, BotoCoreError, ClientError):
+            time.sleep(2)
     return False
 
 
 def run_scheduler():
-    if not wait_for_database():
+    if not wait_for_storage():
         return
     while not stop_requested:
         now = datetime.now(TIME_ZONE)
@@ -83,7 +94,6 @@ def run_scheduler():
                     break
                 time.sleep(min(remaining, 30))
             if not stop_requested:
-                # Catch uploads made during the final minute after the 23:59 sweep.
                 cleanup_for(cleanup_date)
 
 
@@ -94,7 +104,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, request_stop)
     signal.signal(signal.SIGINT, request_stop)
     if args.run_once:
-        if wait_for_database():
+        if wait_for_storage():
             cleanup_for(datetime.now(TIME_ZONE).date())
     else:
         run_scheduler()

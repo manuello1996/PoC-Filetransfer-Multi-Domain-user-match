@@ -10,16 +10,16 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.ProviderConfigProperty;
 
-public final class DomainBAuthenticatorFactory implements AuthenticatorFactory {
-    public static final String ID = "uem-poc-domain-b";
-    private static final DomainBAuthenticator INSTANCE = new DomainBAuthenticator();
+public final class CanonicalAuthenticatorFactory implements AuthenticatorFactory {
+    public static final String ID = "uem-poc-canonical";
+    private static final CanonicalAuthenticator INSTANCE = new CanonicalAuthenticator();
     @Override public String getId() { return ID; }
-    @Override public String getDisplayType() { return "UEM PoC Domain B Windows SSO"; }
+    @Override public String getDisplayType() { return "UEM PoC canonical Windows SSO"; }
     @Override public String getReferenceCategory() { return "uem-poc"; }
     @Override public boolean isConfigurable() { return false; }
     @Override public AuthenticationExecutionModel.Requirement[] getRequirementChoices() { return new AuthenticationExecutionModel.Requirement[]{AuthenticationExecutionModel.Requirement.REQUIRED}; }
     @Override public boolean isUserSetupAllowed() { return false; }
-    @Override public String getHelpText() { return "Simulates Domain B SPNEGO and resolves the linked canonical user."; }
+    @Override public String getHelpText() { return "Simulates canonical-domain SPNEGO and performs first-time directory linking."; }
     @Override public List<ProviderConfigProperty> getConfigProperties() { return Collections.emptyList(); }
     @Override public Authenticator create(KeycloakSession session) { return INSTANCE; }
     @Override public void init(Config.Scope config) {}

@@ -1,0 +1,96 @@
+{
+  "realm": {
+    "name": "uem",
+    "displayName": "UEM Secure Transfer PoC",
+    "keycloakHost": "localhost",
+    "keycloakPort": 8080,
+    "domainAAuthProxy": {
+      "service": "domain-a-auth-proxy",
+      "image": "nginx:1.30.4-alpine",
+      "publicHost": "localhost",
+      "path": "/domain-a",
+      "port": 8180
+    }
+  },
+  "canonicalDomain": {
+    "code": "a",
+    "label": "Domain A",
+    "dnsName": "a.contoso.com",
+    "service": "uem",
+    "port": 8081,
+    "clientId": "uem-a",
+    "clientSecret": "uem-a-poc-secret",
+    "storage": {
+      "metadataDatabase": {
+        "service": "uem-metadata-db",
+        "image": "postgres:16-alpine",
+        "database": "uem_files",
+        "user": "uem",
+        "password": "uem-db-poc-only"
+      },
+      "objectStorage": {
+        "service": "uem-object-storage",
+        "image": "dxflrs/garage:v2.3.0",
+        "dataVolume": "uem-object-storage-garage",
+        "bucket": "uem-uploads",
+        "region": "garage",
+        "accessKey": "GK0123456789abcdef0123456789abcdef",
+        "secretKey": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "rpcSecret": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+        "adminToken": "garage-admin-poc-only",
+        "apiPort": 9000,
+        "adminPort": 3903
+      }
+    }
+  },
+  "linkClient": {
+    "clientId": "uem-link",
+    "clientSecret": "uem-link-poc-secret"
+  },
+  "directoryDomains": [
+    {
+      "code": "b",
+      "label": "Domain B",
+      "dnsName": "b.consoto.com",
+      "service": "uem-vdi",
+      "port": 8082,
+      "clientId": "uem-b",
+      "clientSecret": "uem-b-poc-secret",
+      "ldap": {
+        "service": "domain-b-ldap",
+        "organisation": "Consoto Domain B",
+        "adminPassword": "ldap-admin-poc-only",
+        "usersDn": "ou=people,dc=b,dc=consoto,dc=com",
+        "bindDn": "cn=admin,dc=b,dc=consoto,dc=com",
+        "usersLdif": "50-domain-b-users.ldif",
+        "usernameAttribute": "sAMAccountName",
+        "rdnAttribute": "uid",
+        "uuidAttribute": "entryUUID",
+        "objectClasses": "inetOrgPerson, uemAdAccount"
+      },
+      "testAccount": { "username": "PRV-ALT", "password": "DomainB-Alt-Password1!" }
+    },
+    {
+      "code": "c",
+      "label": "Domain C",
+      "dnsName": "c.consoto.com",
+      "service": "uem-vdi-c",
+      "port": 8083,
+      "clientId": "uem-c",
+      "clientSecret": "uem-c-poc-secret",
+      "ldap": {
+        "service": "domain-c-ldap",
+        "organisation": "Consoto Domain C",
+        "adminPassword": "ldap-admin-poc-only",
+        "usersDn": "ou=people,dc=c,dc=consoto,dc=com",
+        "bindDn": "cn=admin,dc=c,dc=consoto,dc=com",
+        "usersLdif": "50-domain-c-users.ldif",
+        "usernameAttribute": "sAMAccountName",
+        "rdnAttribute": "uid",
+        "uuidAttribute": "entryUUID",
+        "objectClasses": "inetOrgPerson, uemAdAccount"
+      },
+      "testAccount": { "username": "PRV-ALT", "password": "DomainC-Alt-Password1!" }
+    }
+  ]
+}

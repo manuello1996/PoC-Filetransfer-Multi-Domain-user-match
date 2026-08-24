@@ -7,8 +7,31 @@ This repository turns the accompanying solution design into a runnable identity-
 Prerequisites: Docker Desktop using Linux containers.
 
 ```powershell
-docker compose up --build
+.\scripts\bootstrap.ps1 -Reset
 ```
+
+The first run of this configuration model uses `-Reset` to replace any realm created by an older version of the PoC. It deletes all PoC volumes, identity links, and uploaded files. Later runs can use `.\scripts\bootstrap.ps1` without `-Reset`. A plain `docker compose up --build` remains useful after configuration has already been generated.
+
+## Manage domains from one file
+
+[`config/domains.json`](config/domains.json) is the source of truth for the canonical workstation domain and every LDAP/VDI directory domain. It contains the domain code, display and DNS names, host port, OIDC client, LDAP connection settings, LDIF seed file, and PoC test account. The canonical domain's `storage` section also defines the dedicated UEM metadata database and S3-compatible object store.
+
+After adding, changing, or removing a directory entry, run:
+
+```powershell
+python .\scripts\generate-domain-config.py
+docker compose up --build -d
+```
+
+Keycloak startup import creates a realm only when it does not already exist. Therefore, after changing the generated client/flow topology in this local PoC, copy anything needed and run `.\scripts\bootstrap.ps1 -Reset`. Ordinary rebuilds that do not change domain topology do not require a reset.
+
+The generator validates unique codes, ports, and client IDs, checks that every referenced LDIF exists, and derives:
+
+- `docker-compose.yml`, including the logical network zones, one LDAP container and one VDI app per directory domain, a UEM PostgreSQL instance, and a Garage object store;
+- `keycloak/realm/uem-realm.json`, including clients, browser flows, redirects, and OIDC linkage claims;
+- `keycloak/configure/generated-federations/*.json`, `user-profile.json`, and the restricted Domain A proxy configuration.
+
+Treat those generated files as build artifacts: edit `domains.json`, not the repeated values in their output. To add Domain D, copy one object in `directoryDomains`, choose a unique code/port/client, add its LDIF under `ldap/bootstrap`, and run the bootstrap command. No Java or Flask change is required.
 
 Wait until Keycloak reports that it has started. The three simulated computers have separate entry points:
 
@@ -51,9 +74,20 @@ powershell -ExecutionPolicy Bypass -File scripts/smoke-test.ps1
 
 The test links B and C, exercises both VDIs, removes B, verifies C remains, and deletes its generated canonical account afterward. Add `-KeepTestUser` only when you intentionally want to inspect the resulting account and linkage in Keycloak.
 
-The Keycloak Admin Console is at <http://localhost:8080/admin/>. In realm `uem`, open **User federation** to inspect `domain-b-ldap-poc` and `domain-c-ldap-poc`. Open **Users**, select the generated `uem-...` canonical account, and inspect **UEM identity linkage**. It shows the domain-qualified principals, immutable LDAP IDs, DNs, timestamps, and status. These attributes cannot be edited by an end user.
+## Logical network simulation
 
-After signing into the application, the same user-visible linkage is available in the Keycloak Account Console at <http://localhost:8080/realms/uem/account/>. The browser's Keycloak SSO session is reused.
+Compose models the intended trust zones even though all published `localhost` ports remain reachable from the Windows host:
+
+- `unsecure-domain-a` contains the Domain A application and the Domain A side of `domain-a-auth-proxy`. The application has no Docker route or DNS entry for `keycloak`.
+- `service-inout` contains Keycloak, its database, LDAP services, and the trusted side of the Domain A authentication proxy.
+- each VDI has its own `vdi-domain-<code>` network and can reach Keycloak directly;
+- `uem-data` contains the UEM metadata database and Garage object store.
+
+Domain A redirects the browser only to the restricted proxy at <http://localhost:8180/domain-a>. It exposes the configured `uem` realm authentication paths and login-theme resources, while `/admin` and every unrelated path return 404. The Domain A backend also performs token and session operations through this proxy. It never connects directly to the `keycloak` Docker service.
+
+VDI applications use Keycloak directly at <http://localhost:8080>. The Keycloak Admin Console is therefore available from the simulated VDI side at <http://localhost:8080/admin/master/console/> with `admin` / `admin-poc-only`. In realm `uem`, open **User federation** to inspect the generated LDAP providers. Open **Users**, select the generated `uem-...` canonical account, and inspect **UEM identity linkage**.
+
+This is a logical topology demonstration, not a host firewall. In production, publish each endpoint only in its actual network zone, use DNS names and HTTPS, and enforce the boundary with routing and firewall rules. The Domain A browser still participates in OIDC, but all Keycloak pages and protocol requests are carried through the restricted proxy; the browser never connects to Keycloak directly.
 
 To inspect the simulated Domain B directory directly (replace `b` with `c` for Domain C):
 
@@ -72,7 +106,7 @@ To reset all PoC state, including the link and uploaded files:
 docker compose down -v
 ```
 
-This permanently removes the LDAP, PostgreSQL, and UEM data volumes used by this project.
+This permanently removes the LDAP, both PostgreSQL, and Garage data volumes used by this project.
 
 ## What is simulated
 
@@ -84,7 +118,7 @@ The custom Keycloak authenticators replace only the infrastructure unavailable o
 
 The important design properties are implemented rather than mocked: Domain A creates or reuses one canonical Keycloak account; at least one B/C link is mandatory before the first authorization code is issued; each directory account is 1:1 within its own domain; and every linked path emits the same stable `sub`. Upload requires `link_status=ACTIVE` and at least one domain-specific identity claim. The final link cannot be removed until another one is added.
 
-Each UEM logout is scoped to the application where it was initiated. Keycloak removes only that authenticated client session (`uem-a`, `uem-b`, or `uem-c`) from the parent SSO session; other applications remain signed in. Temporary link-management client sessions are revoked immediately while the original Domain A client session is preserved. The three UEM instances use different cookie names while sharing canonical identities and file storage.
+Each UEM logout is scoped to the application where it was initiated. Keycloak removes only that authenticated client session (`uem-a`, `uem-b`, or `uem-c`) from the parent SSO session; other applications remain signed in. Temporary link-management client sessions are revoked immediately while the original Domain A client session is preserved. The UEM instances use different cookie names while sharing canonical identities through the dedicated UEM metadata database and S3 object namespace—there is no filesystem volume mounted into multiple application containers.
 
 Removing a directory link terminates every authenticated Keycloak client session for that user and domain (`uem-b` or `uem-c`) across all parent SSO sessions. It does not terminate the Domain A client or sessions for other linked domains. Every authenticated UEM page runs a background check against `/session/status` every 30 seconds. The endpoint introspects the server-held refresh token with Keycloak; valid pages are not reloaded, while an invalid or revoked client session clears the local session and redirects the browser to that instance's entry page.
 
@@ -100,7 +134,11 @@ Do not expect multiple LDAP federation providers to merge users automatically. K
 
 Users can download or permanently delete their own files from the **Stored files** table. The server resolves every delete by both the opaque file ID and the authenticated Keycloak `sub`; knowing another file ID is not sufficient. Delete requests require the CSRF token held in that web session.
 
-The dedicated `uem-cleanup` container starts cleanup every day at **23:59 Europe/Zurich** and removes the day's file objects and metadata records from the shared `uem-data` volume. A final sweep at midnight catches uploads made during the last minute, and older records are also removed if a previous cleanup was missed. To exercise the same cleanup immediately:
+File bytes are stored in the private `uem-uploads` bucket in the `uem-object-storage` Garage container. File ownership, hashes, names, timestamps, and server-held OIDC refresh tokens are stored in the separate `uem-metadata-db` PostgreSQL instance. Keycloak continues to use its own independent `postgres` service.
+
+The Garage S3 API is available at <http://localhost:9000>. Garage has no built-in web console; its authenticated administration API is exposed locally at <http://localhost:3903>. The fixed S3 access key and secret in `config/domains.json` are for the local PoC only.
+
+The dedicated `uem-cleanup` container starts cleanup every day at **23:59 Europe/Zurich** and removes eligible S3 objects followed by their PostgreSQL metadata records. A final sweep at midnight catches uploads made during the last minute, and older records are also removed if a previous cleanup was missed. To exercise the same cleanup immediately:
 
 ```powershell
 docker compose exec uem-cleanup python cleanup.py --run-once

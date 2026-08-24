@@ -10,16 +10,16 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.ProviderConfigProperty;
 
-public final class DomainAAuthenticatorFactory implements AuthenticatorFactory {
-    public static final String ID = "uem-poc-domain-a";
-    private static final DomainAAuthenticator INSTANCE = new DomainAAuthenticator();
+public final class DirectoryAuthenticatorFactory implements AuthenticatorFactory {
+    public static final String ID = "uem-poc-directory";
+    private static final DirectoryAuthenticator INSTANCE = new DirectoryAuthenticator();
     @Override public String getId() { return ID; }
-    @Override public String getDisplayType() { return "UEM PoC Domain A Windows SSO"; }
+    @Override public String getDisplayType() { return "UEM PoC directory Windows SSO"; }
     @Override public String getReferenceCategory() { return "uem-poc"; }
     @Override public boolean isConfigurable() { return false; }
     @Override public AuthenticationExecutionModel.Requirement[] getRequirementChoices() { return new AuthenticationExecutionModel.Requirement[]{AuthenticationExecutionModel.Requirement.REQUIRED}; }
     @Override public boolean isUserSetupAllowed() { return false; }
-    @Override public String getHelpText() { return "Simulates Domain A SPNEGO and performs first-time Domain B linking."; }
+    @Override public String getHelpText() { return "Selects a configured LDAP federation from the current client."; }
     @Override public List<ProviderConfigProperty> getConfigProperties() { return Collections.emptyList(); }
     @Override public Authenticator create(KeycloakSession session) { return INSTANCE; }
     @Override public void init(Config.Scope config) {}

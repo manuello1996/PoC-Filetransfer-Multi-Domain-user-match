@@ -676,12 +676,80 @@ Web App from C:    uem.c.contoso.com
 
 A runnable Docker Desktop proof of concept accompanies this document. It is intended for a Windows PC that is not joined to either Active Directory domain.
 
-Because real Windows Integrated Authentication requires a domain account, KDC, SPNs, DNS, browser policy, and usually a domain-joined client, the local PoC substitutes custom Keycloak authenticators at that boundary. Domain A creates or resolves a canonical account. Keycloak then requires at least one directory link and presents a dropdown containing the configured B and C domains. The realm initializer creates separate read-only, non-importing LDAP User Federations using `sAMAccountName`. The custom action targets the selected federation directly, which keeps identical usernames in different domains unambiguous. Each domain-specific identity remains 1:1, while one canonical account can hold links in several domains.
+Because real Windows Integrated Authentication requires a domain account, KDC, SPNs, DNS, browser policy, and usually a domain-joined client, the local PoC substitutes custom Keycloak authenticators at that boundary. The canonical domain creates or resolves a canonical account. Keycloak then requires at least one directory link and presents a dropdown populated from the generated LDAP federation metadata. The realm initializer creates separate read-only, non-importing LDAP User Federations using `sAMAccountName`. The custom action targets the selected federation directly, which keeps identical usernames in different domains unambiguous. Each domain-specific identity remains 1:1, while one canonical account can hold links in several domains. Domain topology and related storage settings are declared once in `config/domains.json`; the bootstrap generator derives the Compose and Keycloak artifacts.
 
-The PoC exposes three web entry points: `http://localhost:8081` for the Domain A workstation and link settings, `http://localhost:8082` for the Domain B VDI, and `http://localhost:8083` for the Domain C VDI. They use separate cookies and OIDC clients while sharing the canonical realm, metadata, and object storage.
+The default PoC exposes three web entry points: `http://localhost:8081` for the Domain A workstation and link settings, `http://localhost:8082` for the Domain B VDI, and `http://localhost:8083` for the Domain C VDI. They use separate cookies and OIDC clients while sharing the canonical realm. File bytes live in a private Garage S3 bucket, while ownership, integrity metadata, and server-side OIDC session records live in a dedicated UEM PostgreSQL instance separate from Keycloak's PostgreSQL database. No application filesystem volume is shared between UEM containers.
+
+Compose treats its networks as a logical simulation of the target security zones. The Domain A application is attached to `unsecure-domain-a` and has no Docker route or DNS entry for Keycloak. A dedicated NGINX service bridges that network to `service-inout` and exposes only the configured UEM realm authentication paths and required theme resources at `http://localhost:8180/domain-a`; administration and unrelated paths are rejected. Domain A browser and backend OIDC traffic therefore traverses the proxy, never the Keycloak service directly. Keycloak, LDAP, and the Keycloak database reside in `service-inout`. Each VDI application has a separate `vdi-domain-<code>` network shared with Keycloak, so VDI clients use the complete Keycloak surface directly at `http://localhost:8080`, including administration and APIs. `uem-data` separately connects the applications to the metadata database and Garage. Because Docker Desktop publishes both local ports to the Windows host, this proves routing intent rather than providing a host firewall; production must bind these endpoints only into their real zones and enforce the boundary with HTTPS, DNS, routing, and firewall policy.
+
+## D.1 PoC Network Schema
+
+```mermaid
+flowchart LR
+    UAUSER[Domain A browser<br/>Unsecure workstation]
+    BUSER[Domain B browser<br/>VDI B]
+    CUSER[Domain C browser<br/>VDI C]
+
+    subgraph UNA[unsecure-domain-a]
+        UEMA[UEM Domain A<br/>uem-a :8081]
+    end
+
+    subgraph EDGE[Dual-homed authentication boundary]
+        PROXY[Domain A auth proxy<br/>NGINX :8180/domain-a]
+    end
+
+    subgraph SVC[service-inout]
+        KC[Keycloak :8080<br/>Realm, Admin and APIs]
+        KCDB[(Keycloak PostgreSQL)]
+        LDAPB[(Domain B LDAP)]
+        LDAPC[(Domain C LDAP)]
+    end
+
+    subgraph VDIB[vdi-domain-b]
+        UEMB[UEM Domain B<br/>uem-b :8082]
+    end
+
+    subgraph VDIC[vdi-domain-c]
+        UEMC[UEM Domain C<br/>uem-c :8083]
+    end
+
+    subgraph DATA[uem-data]
+        METADB[(UEM metadata PostgreSQL)]
+        GARAGE[(Garage S3 bucket)]
+    end
+
+    UAUSER -->|Application traffic| UEMA
+    UAUSER -->|OIDC front channel| PROXY
+    UEMA -->|OIDC back channel| PROXY
+    PROXY -->|Restricted UEM realm paths| KC
+    UEMA -.->|No direct route or DNS| KC
+
+    BUSER -->|Application traffic| UEMB
+    BUSER -->|Direct OIDC, Admin and APIs| KC
+    UEMB -->|Direct OIDC back channel| KC
+
+    CUSER -->|Application traffic| UEMC
+    CUSER -->|Direct OIDC, Admin and APIs| KC
+    UEMC -->|Direct OIDC back channel| KC
+
+    KC --> KCDB
+    KC -->|User Federation| LDAPB
+    KC -->|User Federation| LDAPC
+
+    UEMA --> METADB
+    UEMA --> GARAGE
+    UEMB --> METADB
+    UEMB --> GARAGE
+    UEMC --> METADB
+    UEMC --> GARAGE
+
+    linkStyle 4 stroke:#c62828,stroke-width:2px,stroke-dasharray:5 5;
+```
+
+The proxy is attached to both `unsecure-domain-a` and `service-inout`; the separate boundary box represents this dual-homed container. The dashed red connection is intentionally unavailable. Each UEM application is also attached to `uem-data`, while neither Keycloak nor the LDAP services are attached to that storage network.
 
 Application logout is client-scoped. Each UEM instance clears only its own local cookie and revokes its server-held refresh token through Keycloak, removing that authenticated client session without terminating the parent SSO session or the other UEM client's session. The browser stores only an opaque reference to the server-side token record.
 
 Directory unlink is also client-scoped but applies across all of the canonical user's Keycloak SSO sessions: unlinking Domain B removes every authenticated `uem-b` client session, and unlinking Domain C removes every `uem-c` client session. Other domain clients and `uem-a` remain active. Each rendered authenticated page performs a no-reload heartbeat every 30 seconds. The BFF introspects the server-held refresh token; revocation returns HTTP 401, clears the local session, and causes the browser to return to its entry page. Temporary Keycloak or network failures return HTTP 503 and do not force a browser reload.
 
-The canonical account stores read-only, domain-qualified principals, immutable directory IDs, LDAP DNs, timestamps, method, and aggregate link status. The Domain A web settings page shows B/C link state and launches Keycloak actions to add or remove links. At least one link must remain. Upload requires active status plus at least one domain identity claim. File ownership, download, and CSRF-protected deletion continue to use only the canonical `sub`; nightly cleanup remains unchanged. See [`README.md`](README.md) for the runnable acceptance test.
+The canonical account stores read-only, domain-qualified principals, immutable directory IDs, LDAP DNs, timestamps, method, and aggregate link status. The canonical-domain settings page shows every configured directory link and launches Keycloak actions to add or remove links. At least one link must remain. Upload requires active status plus at least one domain identity claim. File ownership, S3 download, and CSRF-protected deletion continue to use only the canonical `sub`; nightly cleanup removes the S3 object before its metadata row. See [`README.md`](README.md) for the runnable acceptance test.

@@ -3,10 +3,6 @@ package com.contoso.uem;
 import java.util.Locale;
 
 final class PocIdentity {
-    static final String ATTR_A = "identity_a";
-    static final String ATTR_B = "identity_b";
-    static final String ATTR_C = "identity_c";
-
     private PocIdentity() {}
 
     static String env(String name, String fallback) {
@@ -28,7 +24,4 @@ final class PocIdentity {
         return "identity_" + domain;
     }
 
-    static boolean hasAnyDirectoryLink(org.keycloak.models.UserModel user) {
-        return user.getFirstAttribute(ATTR_B) != null || user.getFirstAttribute(ATTR_C) != null;
-    }
 }

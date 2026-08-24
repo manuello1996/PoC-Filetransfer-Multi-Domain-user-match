@@ -1,3 +1,2 @@
-com.contoso.uem.DomainAAuthenticatorFactory
-com.contoso.uem.DomainBAuthenticatorFactory
-com.contoso.uem.DomainCAuthenticatorFactory
+com.contoso.uem.CanonicalAuthenticatorFactory
+com.contoso.uem.DirectoryAuthenticatorFactory

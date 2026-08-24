@@ -1,7 +1,6 @@
 package com.contoso.uem;
 
 import org.jboss.logging.Logger;
-import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.storage.UserStorageProvider;
@@ -16,19 +15,14 @@ final class FederatedDirectory {
 
     static User authenticate(KeycloakSession session, RealmModel realm, String domain, String username, String password) {
         String accountName = PocIdentity.normalize(username);
-        if (!("b".equals(domain) || "c".equals(domain))
-                || accountName.isBlank() || password == null || password.isBlank()) return null;
+        if (accountName.isBlank() || password == null || password.isBlank()) return null;
 
-        String federationName = "domain-" + domain + "-ldap-poc";
-        ComponentModel component = realm.getStorageProviders(UserStorageProvider.class)
-                .filter(candidate -> federationName.equals(candidate.getName()))
-                .filter(candidate -> candidate.getConfig().getFirst("enabled") == null
-                        || Boolean.parseBoolean(candidate.getConfig().getFirst("enabled")))
-                .findFirst().orElse(null);
-        if (component == null) {
+        DirectoryDomains.Domain directory = DirectoryDomains.find(realm, domain).orElse(null);
+        if (directory == null) {
             LOG.warnf("No enabled LDAP federation component was found for Domain %s", domain.toUpperCase());
             return null;
         }
+        var component = directory.component();
 
         try {
             UserStorageProvider storageProvider = session.getProvider(UserStorageProvider.class, component);

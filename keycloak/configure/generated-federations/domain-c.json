@@ -1,0 +1,92 @@
+{
+  "name": "domain-c-ldap-poc",
+  "providerId": "ldap",
+  "providerType": "org.keycloak.storage.UserStorageProvider",
+  "parentId": "@@REALM_ID@@",
+  "config": {
+    "enabled": [
+      "true"
+    ],
+    "priority": [
+      "1"
+    ],
+    "editMode": [
+      "READ_ONLY"
+    ],
+    "importEnabled": [
+      "false"
+    ],
+    "syncRegistrations": [
+      "false"
+    ],
+    "vendor": [
+      "other"
+    ],
+    "usernameLDAPAttribute": [
+      "sAMAccountName"
+    ],
+    "rdnLDAPAttribute": [
+      "uid"
+    ],
+    "uuidLDAPAttribute": [
+      "entryUUID"
+    ],
+    "userObjectClasses": [
+      "inetOrgPerson, uemAdAccount"
+    ],
+    "connectionUrl": [
+      "ldap://domain-c-ldap:389"
+    ],
+    "usersDn": [
+      "ou=people,dc=c,dc=consoto,dc=com"
+    ],
+    "authType": [
+      "simple"
+    ],
+    "bindDn": [
+      "cn=admin,dc=c,dc=consoto,dc=com"
+    ],
+    "bindCredential": [
+      "ldap-admin-poc-only"
+    ],
+    "searchScope": [
+      "2"
+    ],
+    "useTruststoreSpi": [
+      "ldapsOnly"
+    ],
+    "connectionPooling": [
+      "true"
+    ],
+    "pagination": [
+      "true"
+    ],
+    "batchSizeForSync": [
+      "1000"
+    ],
+    "fullSyncPeriod": [
+      "-1"
+    ],
+    "changedSyncPeriod": [
+      "-1"
+    ],
+    "cachePolicy": [
+      "DEFAULT"
+    ],
+    "allowKerberosAuthentication": [
+      "false"
+    ],
+    "uemDomainCode": [
+      "c"
+    ],
+    "uemDomainLabel": [
+      "Domain C"
+    ],
+    "uemDomainDnsName": [
+      "c.consoto.com"
+    ],
+    "uemClientId": [
+      "uem-c"
+    ]
+  }
+}

@@ -1,23 +1,272 @@
 {
   "attributes": [
-    {"name":"username","displayName":"${username}","validations":{"length":{"min":3,"max":255},"username-prohibited-characters":{},"up-username-not-idn-homograph":{}},"permissions":{"view":["admin","user"],"edit":["admin","user"]},"multivalued":false},
-    {"name":"email","displayName":"${email}","validations":{"email":{},"length":{"max":255}},"permissions":{"view":["admin","user"],"edit":["admin","user"]},"multivalued":false},
-    {"name":"firstName","displayName":"${firstName}","validations":{"length":{"max":255},"person-name-prohibited-characters":{}},"permissions":{"view":["admin","user"],"edit":["admin","user"]},"multivalued":false},
-    {"name":"lastName","displayName":"${lastName}","validations":{"length":{"max":255},"person-name-prohibited-characters":{}},"permissions":{"view":["admin","user"],"edit":["admin","user"]},"multivalued":false},
-    {"name":"identity_a","displayName":"Linked Domain A principal","permissions":{"view":["admin","user"],"edit":["admin"]},"group":"identity-linkage","multivalued":false},
-    {"name":"identity_b","displayName":"Linked Domain B principal","permissions":{"view":["admin","user"],"edit":["admin"]},"group":"identity-linkage","multivalued":false},
-    {"name":"identity_b_id","displayName":"Domain B immutable directory ID","permissions":{"view":["admin"],"edit":["admin"]},"group":"identity-linkage","multivalued":false},
-    {"name":"domain_b_dn","displayName":"Domain B LDAP DN","permissions":{"view":["admin"],"edit":["admin"]},"group":"identity-linkage","multivalued":false},
-    {"name":"linked_b_at","displayName":"Domain B linked at (UTC)","permissions":{"view":["admin","user"],"edit":["admin"]},"group":"identity-linkage","multivalued":false},
-    {"name":"identity_c","displayName":"Linked Domain C principal","permissions":{"view":["admin","user"],"edit":["admin"]},"group":"identity-linkage","multivalued":false},
-    {"name":"identity_c_id","displayName":"Domain C immutable directory ID","permissions":{"view":["admin"],"edit":["admin"]},"group":"identity-linkage","multivalued":false},
-    {"name":"domain_c_dn","displayName":"Domain C LDAP DN","permissions":{"view":["admin"],"edit":["admin"]},"group":"identity-linkage","multivalued":false},
-    {"name":"linked_c_at","displayName":"Domain C linked at (UTC)","permissions":{"view":["admin","user"],"edit":["admin"]},"group":"identity-linkage","multivalued":false},
-    {"name":"link_status","displayName":"Link status","permissions":{"view":["admin","user"],"edit":["admin"]},"group":"identity-linkage","multivalued":false},
-    {"name":"linked_at","displayName":"Linked at (UTC)","permissions":{"view":["admin","user"],"edit":["admin"]},"group":"identity-linkage","multivalued":false},
-    {"name":"link_method","displayName":"Link method","permissions":{"view":["admin"],"edit":["admin"]},"group":"identity-linkage","multivalued":false}
+    {
+      "name": "username",
+      "displayName": "${username}",
+      "validations": {
+        "length": {
+          "min": 3,
+          "max": 255
+        },
+        "username-prohibited-characters": {},
+        "up-username-not-idn-homograph": {}
+      },
+      "permissions": {
+        "view": [
+          "admin",
+          "user"
+        ],
+        "edit": [
+          "admin",
+          "user"
+        ]
+      },
+      "multivalued": false
+    },
+    {
+      "name": "email",
+      "displayName": "${email}",
+      "validations": {
+        "email": {},
+        "length": {
+          "max": 255
+        }
+      },
+      "permissions": {
+        "view": [
+          "admin",
+          "user"
+        ],
+        "edit": [
+          "admin",
+          "user"
+        ]
+      },
+      "multivalued": false
+    },
+    {
+      "name": "firstName",
+      "displayName": "${firstName}",
+      "validations": {
+        "length": {
+          "max": 255
+        },
+        "person-name-prohibited-characters": {}
+      },
+      "permissions": {
+        "view": [
+          "admin",
+          "user"
+        ],
+        "edit": [
+          "admin",
+          "user"
+        ]
+      },
+      "multivalued": false
+    },
+    {
+      "name": "lastName",
+      "displayName": "${lastName}",
+      "validations": {
+        "length": {
+          "max": 255
+        },
+        "person-name-prohibited-characters": {}
+      },
+      "permissions": {
+        "view": [
+          "admin",
+          "user"
+        ],
+        "edit": [
+          "admin",
+          "user"
+        ]
+      },
+      "multivalued": false
+    },
+    {
+      "name": "identity_a",
+      "displayName": "Linked Domain A principal",
+      "permissions": {
+        "view": [
+          "admin",
+          "user"
+        ],
+        "edit": [
+          "admin"
+        ]
+      },
+      "group": "identity-linkage",
+      "multivalued": false
+    },
+    {
+      "name": "identity_b",
+      "displayName": "Linked Domain B principal",
+      "permissions": {
+        "view": [
+          "admin",
+          "user"
+        ],
+        "edit": [
+          "admin"
+        ]
+      },
+      "group": "identity-linkage",
+      "multivalued": false
+    },
+    {
+      "name": "identity_b_id",
+      "displayName": "Domain B immutable directory ID",
+      "permissions": {
+        "view": [
+          "admin"
+        ],
+        "edit": [
+          "admin"
+        ]
+      },
+      "group": "identity-linkage",
+      "multivalued": false
+    },
+    {
+      "name": "domain_b_dn",
+      "displayName": "Domain B LDAP DN",
+      "permissions": {
+        "view": [
+          "admin"
+        ],
+        "edit": [
+          "admin"
+        ]
+      },
+      "group": "identity-linkage",
+      "multivalued": false
+    },
+    {
+      "name": "linked_b_at",
+      "displayName": "Domain B linked at (UTC)",
+      "permissions": {
+        "view": [
+          "admin",
+          "user"
+        ],
+        "edit": [
+          "admin"
+        ]
+      },
+      "group": "identity-linkage",
+      "multivalued": false
+    },
+    {
+      "name": "identity_c",
+      "displayName": "Linked Domain C principal",
+      "permissions": {
+        "view": [
+          "admin",
+          "user"
+        ],
+        "edit": [
+          "admin"
+        ]
+      },
+      "group": "identity-linkage",
+      "multivalued": false
+    },
+    {
+      "name": "identity_c_id",
+      "displayName": "Domain C immutable directory ID",
+      "permissions": {
+        "view": [
+          "admin"
+        ],
+        "edit": [
+          "admin"
+        ]
+      },
+      "group": "identity-linkage",
+      "multivalued": false
+    },
+    {
+      "name": "domain_c_dn",
+      "displayName": "Domain C LDAP DN",
+      "permissions": {
+        "view": [
+          "admin"
+        ],
+        "edit": [
+          "admin"
+        ]
+      },
+      "group": "identity-linkage",
+      "multivalued": false
+    },
+    {
+      "name": "linked_c_at",
+      "displayName": "Domain C linked at (UTC)",
+      "permissions": {
+        "view": [
+          "admin",
+          "user"
+        ],
+        "edit": [
+          "admin"
+        ]
+      },
+      "group": "identity-linkage",
+      "multivalued": false
+    },
+    {
+      "name": "link_status",
+      "displayName": "Link status",
+      "permissions": {
+        "view": [
+          "admin",
+          "user"
+        ],
+        "edit": [
+          "admin"
+        ]
+      },
+      "group": "identity-linkage",
+      "multivalued": false
+    },
+    {
+      "name": "linked_at",
+      "displayName": "Linked at (UTC)",
+      "permissions": {
+        "view": [
+          "admin",
+          "user"
+        ],
+        "edit": [
+          "admin"
+        ]
+      },
+      "group": "identity-linkage",
+      "multivalued": false
+    },
+    {
+      "name": "link_method",
+      "displayName": "Link method",
+      "permissions": {
+        "view": [
+          "admin"
+        ],
+        "edit": [
+          "admin"
+        ]
+      },
+      "group": "identity-linkage",
+      "multivalued": false
+    }
   ],
   "groups": [
-    {"name":"identity-linkage","displayHeader":"UEM identity linkage","displayDescription":"Read-only linkage established by the UEM self-service authentication flow."}
+    {
+      "name": "identity-linkage",
+      "displayHeader": "UEM identity linkage",
+      "displayDescription": "Read-only linkage established by the UEM self-service authentication flow."
+    }
   ]
 }
