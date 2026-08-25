@@ -18,7 +18,7 @@ Target audience: IAM, Cybersecurity, Active Directory, Network, Platform, and Ap
 | Date | 21 August 2026 |
 
 > **Architecture Decision**  
-> The application identity is decoupled from usernames in every connected Active Directory domain. For example, `A\\U12345`, `B\\PRV-PML`, and `C\\PRV-PML` can be correlated to one stable Keycloak subject used for authorization, file ownership, and audit correlation.
+> The application identity is decoupled from usernames in every connected Active Directory domain. For example, `A\\U12345`, `B\\USER-PML`, and `C\\USER-PML` can be correlated to one stable Keycloak subject used for authorization, file ownership, and audit correlation.
 
 ---
 
@@ -37,7 +37,7 @@ Core design principles:
 - Domain B credentials are validated against Active Directory B and are never persisted.
 - Only the relationship between the Domain A identity, Domain B identity, and canonical Keycloak identity is persisted.
 - The UEM application consumes a canonical OIDC identity and contains no direct Kerberos, LDAP, or Active Directory authentication logic.
-- Files are owned by the canonical Keycloak `sub`/UUID rather than by `U12345` or `PRV-PML`.
+- Files are owned by the canonical Keycloak `sub`/UUID rather than by `U12345` or `USER-PML`.
 - Security-relevant operations can be audited using the canonical identity, source identity, source security zone, and file integrity metadata.
 
 > **Guiding Principle**  
@@ -50,14 +50,14 @@ Core design principles:
 | Element | State / Requirement |
 |---|---|
 | Domain A client | Windows workstation joined to `a.contoso.com`; example user `A\\U12345` |
-| Domain B client | VDI session / jump host joined to `b.consoto.com`; example user `B\\PRV-PML` |
+| Domain B client | VDI session / jump host joined to `b.consoto.com`; example user `B\\USER-PML` |
 | Domain A URL | `https://micro-uem.a.consoto.com` |
 | Domain B URL | `https://uem.b.contoso.com` |
 | Domain A identity administration | Managed by a third party; no ability to modify user attributes |
 | Domain B identity administration | Controlled by the solution team; users and directory attributes can be read and managed |
 | User experience | Transparent SSO on both workstation and VDI after initial provisioning |
 | Data segregation | Each canonical user must only be able to access their own file namespace |
-| Example identity mapping | `A\\U12345 <-> B\\PRV-PML <-> canonical Keycloak sub/UUID` |
+| Example identity mapping | `A\\U12345 <-> B\\USER-PML <-> canonical Keycloak sub/UUID` |
 
 ## 2.1 Non-Goals
 
@@ -82,12 +82,12 @@ flowchart TB
 
     subgraph IAM[KEYCLOAK]
         KC[Identity Broker\nKerberos / LDAP Federation\nOIDC / SSO\nRBAC / MFA / Audit]
-        MAP[Canonical Identity Mapping\nA\\U12345 <-> B\\PRV-PML\n-> User UUID / sub]
+        MAP[Canonical Identity Mapping\nA\\U12345 <-> B\\USER-PML\n-> User UUID / sub]
         KC --> MAP
     end
 
     subgraph DB[DOMAIN B - b.consoto.com]
-        VDIB[VDI / Jump Host\nB\\PRV-PML]
+        VDIB[VDI / Jump Host\nB\\USER-PML]
         EPB[uem.b.contoso.com]
         VDIB -->|Kerberos / SPNEGO\nWindows SSO| EPB
     end
@@ -126,7 +126,7 @@ Account names are mutable and directory-specific. The Keycloak subject is instea
 
 ```text
 External identity A: U12345@a.contoso.com
-External identity B: PRV-PML@b.consoto.com
+External identity B: USER-PML@b.consoto.com
                          |
                          v
 Canonical Keycloak user: <UUID / sub>
@@ -145,7 +145,7 @@ A\\U12345 -----------+
                Keycloak User UUID
                       ^
                       |
-B\\PRV-PML -----------+
+B\\USER-PML -----------+
 ```
 
 ## 4.1 Mapping Persistence
@@ -163,7 +163,7 @@ Logical data model:
 |---|---|---|
 | `canonical_user_id` | `cef04b42-dcf0-4e41-...` | Immutable |
 | `identity_type` | `AD_A` / `AD_B` | Enumerated |
-| `principal` | `U12345@a.contoso.com` / `PRV-PML@b.consoto.com` | Normalized and unique within provider scope |
+| `principal` | `U12345@a.contoso.com` / `USER-PML@b.consoto.com` | Normalized and unique within provider scope |
 | `linked_at` | UTC timestamp | Auditable |
 | `link_method` | `SELF_PROVISIONING_B_CREDENTIAL` | Auditable |
 | `status` | `ACTIVE` / `REVOKED` | Administratively controlled |
@@ -190,7 +190,7 @@ sequenceDiagram
 
     alt Mapping does not exist
         K-->>U: Self-Provisioning Required Action
-        U->>K: B\\PRV-PML + Domain B password
+        U->>K: B\\USER-PML + Domain B password
         K->>AD: Validate credentials
         AD-->>K: Success / Failure
 
@@ -211,9 +211,9 @@ Operational sequence:
 2. The browser performs SPNEGO negotiation and Keycloak validates the Kerberos ticket, obtaining the Domain A principal.
 3. Keycloak checks whether an active canonical mapping already exists for the Domain A principal.
 4. If no mapping exists, the authentication flow invokes a custom **Required Action / Authenticator** implementing self-provisioning.
-5. The user enters the Domain B username and password only during this step, for example `PRV-PML`.
+5. The user enters the Domain B username and password only during this step, for example `USER-PML`.
 6. The custom component asks Keycloak's named Domain B User Federation provider to resolve the account and validate the credentials against Active Directory B over an approved protected channel, preferably LDAPS. LDAP connection, bind, search-base, and attribute-mapping configuration belongs to the federation provider, not to custom code.
-7. If validation succeeds, Keycloak resolves or creates the canonical identity associated with `B\\PRV-PML` and persists the mapping to `A\\U12345`.
+7. If validation succeeds, Keycloak resolves or creates the canonical identity associated with `B\\USER-PML` and persists the mapping to `A\\U12345`.
 8. The Domain B password is immediately discarded and must not be written to databases, logs, telemetry, traces, or session stores.
 9. Keycloak completes the authentication flow and issues the OIDC session/tokens associated with the canonical identity to the BFF.
 
@@ -242,7 +242,7 @@ The user is not prompted for Domain B credentials again.
 ## 5.3 Access from the VDI Session in Domain B
 
 ```text
-B\\PRV-PML
+B\\USER-PML
     |
     v
 Kerberos / SPNEGO
@@ -449,7 +449,7 @@ A\\U12345
   -> UPLOAD file_id=7348
   -> source_zone=A
 
-B\\PRV-PML
+B\\USER-PML
   -> canonical_sub=cef04b42...
   -> DOWNLOAD file_id=7348
   -> source_zone=B
@@ -547,7 +547,7 @@ Example token/claims payload:
 {
   "iss": "https://<keycloak>/realms/uem",
   "sub": "cef04b42-dcf0-4e41-...",
-  "preferred_username": "PRV-PML",
+  "preferred_username": "USER-PML",
   "roles": ["uem-user"],
   "source_domain": "A",
   "source_principal": "U12345@a.contoso.com"
@@ -597,7 +597,7 @@ A\\U12345 --Kerberos--> Keycloak
                          v
                   Self-Provisioning
                          |
-                 B\\PRV-PML + password
+                 B\\USER-PML + password
                          |
                          v
                        AD B
@@ -608,7 +608,7 @@ A\\U12345 --Kerberos--> Keycloak
                          v
               Create canonical mapping
 
- A\\U12345 <------ <Keycloak sub> ------> B\\PRV-PML
+ A\\U12345 <------ <Keycloak sub> ------> B\\USER-PML
                          |
                         OIDC
                          |

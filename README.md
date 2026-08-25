@@ -48,9 +48,9 @@ Test credentials:
 | Identity | Value |
 |---|---|
 | Simulated Domain A Windows user | Any value matching `[A-Za-z0-9._-]{1,64}` |
-| Domain B LDAP user 1 | `PRV-PML` / `DomainB-Poc-Password1!` |
+| Domain B LDAP user 1 | `USER-PML` / `DomainB-Poc-Password1!` |
 | Domain B LDAP user 2 | `PRV-ALT` / `DomainB-Alt-Password1!` |
-| Domain C LDAP user 1 | `PRV-PML` / `DomainC-Poc-Password1!` |
+| Domain C LDAP user 1 | `USER-PML` / `DomainC-Poc-Password1!` |
 | Domain C LDAP user 2 | `PRV-ALT` / `DomainC-Alt-Password1!` |
 | Keycloak administrator | `admin` / `admin-poc-only` |
 

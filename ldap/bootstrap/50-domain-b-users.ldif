@@ -2,15 +2,15 @@ dn: ou=people,dc=b,dc=consoto,dc=com
 objectClass: organizationalUnit
 ou: people
 
-dn: uid=PRV-PML,ou=people,dc=b,dc=consoto,dc=com
+dn: uid=USER-PML,ou=people,dc=b,dc=consoto,dc=com
 objectClass: inetOrgPerson
 objectClass: uemAdAccount
-uid: PRV-PML
-sAMAccountName: PRV-PML
+uid: USER-PML
+sAMAccountName: USER-PML
 cn: Privileged PML
 sn: PML
 givenName: Privileged
-mail: prv-pml@b.consoto.com
+mail: user-pml@b.consoto.com
 userPassword: DomainB-Poc-Password1!
 
 dn: uid=PRV-ALT,ou=people,dc=b,dc=consoto,dc=com

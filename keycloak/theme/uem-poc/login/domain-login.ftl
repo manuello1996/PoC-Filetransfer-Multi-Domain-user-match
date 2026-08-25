@@ -5,7 +5,7 @@
     <div class="poc-note">This form authenticates against the ${domainLabel} LDAP federation. In production, SPNEGO supplies the identity and no password form is shown.</div>
     <form action="${url.loginAction}" method="post">
       <div class="form-group"><label for="username">Windows user</label>
-        <input id="username" name="username" class="form-control" value="PRV-PML" autofocus autocomplete="username" />
+        <input id="username" name="username" class="form-control" value="USER-PML" autofocus autocomplete="username" />
       </div>
       <div class="form-group"><label for="password">PoC password</label>
         <input id="password" name="password" class="form-control" type="password" autocomplete="current-password" />
